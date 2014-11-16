@@ -27,8 +27,7 @@ def main(indexLocation,k):
 
             docs.append(doc)
             vecs.append(eval(v))
-        if i>3:
-            break
+        
         
 
     # initialize centroid vector
