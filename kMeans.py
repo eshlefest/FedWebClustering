@@ -27,11 +27,14 @@ def main(indexLocation,k):
 
             docs.append(doc)
             vecs.append(eval(v))
+        break
+
+    print len(vecs)
         
         
 
     # initialize centroid vector
-    centroids = [vecs[random.randint(0,len(vecs)-1)] for i in range(k)]
+    centroids = centroids = initializeCentroids(indexLocation,vecFile,k)#[vecs[random.randint(0,len(vecs)-1)] for i in range(k)]
     centroid_assignments = [[] for i in range(k)]
 
 
@@ -117,6 +120,20 @@ def computeSimilarity(vec1,vec2):
             i+=1
 
     return dot_product
+
+def initializeCentroids(indexLocation,vecFile,k):
+    centroids = []
+
+    for i in range(k):    
+        f = open(indexLocation+"/"+vecFile[random.randint(0,len(vecFile)-1)])
+        lines = f.readlines()
+
+        line = lines[random.randint(0,len(lines)-1)]
+        l,vec = line.split(":")
+
+        centroids.append(eval(vec))
+
+    return centroids
 
 def normalize(vec):
     """ normalizes the vector """
