@@ -37,6 +37,7 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
             while(vec_num != doc_num):
                 docVecsIndex +=1
+                print docVecs[docVecsIndex]
                 vec_num = docVecs[docVecsIndex][18:21]
 
             # make sure current open file corresponds to current docVecsIndex
