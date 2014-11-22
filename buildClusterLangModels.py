@@ -1,7 +1,9 @@
 import argparse
 import os
+from multiprocessing import Pool
 
 SMOOTHING_ALPHA = .99
+PROCESSES = 8
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
 # a resource and CTF is the collection frequency
@@ -14,6 +16,8 @@ def main(indexLocation,clusterLocation,modelsLocation):
     clusters = open(clusterLocation,"r")
     models = open(modelsLocation,"w")
     docVecs = [f for f in os.listdir(indexLocation) if f.endswith(".vec#")]
+    process_pool = Pool(PROCESSES)
+
 
     for i,c in enumerate(clusters.readlines()):
         aggregateVector = []
@@ -54,13 +58,20 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
             if i %500 == 0:
                 print i
-            vec = eval(vec)
+            aggregateVector.append(eval(vec))
             if vec == [[]]:
                 continue
-            aggregateVector = addVecs(vec,aggregateVector)
+
+        vec_groups = [[] for i in range(PROCESSES)]
+        for v in aggregateVector:
+            vec_groups[v%PROCESSES].append(v)
+
+        sums = process_pool.map(sum_groups, aggregateVector)
+
+        sums = sum_groups(sums)
 
         print "writing model %d"%i
-        models.write("%d:%s\n"%(i,str(aggregateVector)))
+        models.write("%d:%s\n"%(i,str(sums)))
         models.flush()
 
 
@@ -97,7 +108,15 @@ def addVecs(vec1,vec2):
 
     return new_vec
 
+def sum_groups(vec_group):
+    v1 = []
+    for v2 in vec_group:
+        #print len(v2)
+        if v2 == [[]]:
+            continue
+        v1 = addVecs(v1,v2)
 
+    return v1
 
 
 if __name__ == '__main__':
