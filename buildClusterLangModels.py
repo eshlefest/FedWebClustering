@@ -4,8 +4,8 @@ from multiprocessing import Pool
 from functools import partial
 
 SMOOTHING_ALPHA = .99
-PROCESSES = 4
-process_pool = Pool(PROCESSES)
+PROCESSES = 8 
+global process_pool
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
 # a resource and CTF is the collection frequency
@@ -15,6 +15,8 @@ process_pool = Pool(PROCESSES)
 # all OOV terms have a frequency of 1, and add 1 to all term frequencies, implementing laplace smoothing.
 
 def main(indexLocation,clusterLocation,modelsLocation):
+    global process_pool
+    process_pool = Pool(PROCESSES)
     clusters = open(clusterLocation,"r")
     write_models = open(modelsLocation,"w")
     docVecs = sorted([f for f in os.listdir(indexLocation) if f.endswith(".vec#")])
@@ -23,6 +25,29 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
     print "computing models"
     c = clusters.readlines()
+
+    group = []
+    models = []
+    for i,line in enumerate(c):
+        group.append(line)
+        if i%PROCESSES == PROCESSES - 1:
+            models =  process_pool.map(partial_computeModels,group)
+            for j,m in enumerate(models):
+                model_num = i - PROCESSES + 1 + j
+                print "writing model %d"%model_num
+                write_models.write("%d:%s\n"%(model_num,str(sums)))
+                
+            group = []
+            write_models.flush()
+
+    for j,m in enumerate(models):
+        model_num = j + len(c)-len(models)
+        print "writing model %d"%model_num
+        write_models.write("%d:%s\n"%(model_num,str(sums)))
+
+
+
+
     models =  process_pool.map(partial_computeModels,c)
 
     for i,m in enumerate(models):
@@ -32,7 +57,7 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
 def computeModel(c,docVecs,indexLocation):
         aggregateVector = []
-
+        global process_pool
         k,docs = c.split(":")
         docs = eval(docs)
         docVecsIndex = 0
@@ -73,13 +98,13 @@ def computeModel(c,docVecs,indexLocation):
             if vec == [[]]:
                 continue
 
-        vec_groups = [[] for i in range(PROCESSES)]
-        for i,v in enumerate(aggregateVector):
-            vec_groups[i%PROCESSES].append(v)
+        #vec_groups = [[] for i in range(PROCESSES)]
+        #for i,v in enumerate(aggregateVector):
+        #    vec_groups[i%PROCESSES].append(v)
 
-        sums = process_pool.map(sum_groups, vec_groups)
+        #sums = process_pool.map(sum_groups, vec_groups)
 
-        sums = sum_groups(sums)
+        sums = sum_groups(aggregateVector)
         return sums
 
 
