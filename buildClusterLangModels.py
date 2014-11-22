@@ -1,10 +1,12 @@
 import argparse
 import os
-from multiprocessing import Pool
+from multiprocessing import Pool,current_process
 from functools import partial
+import gc
 
 SMOOTHING_ALPHA = .99
-PROCESSES = 8 
+PROCESSES = 5 
+INNER_PROCESSES = 4
 global process_pool
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
@@ -31,14 +33,16 @@ def main(indexLocation,clusterLocation,modelsLocation):
     for i,line in enumerate(c):
         group.append(line)
         if i%PROCESSES == PROCESSES - 1:
+            models = []
             models =  process_pool.map(partial_computeModels,group)
             for j,m in enumerate(models):
                 model_num = i - PROCESSES + 1 + j
                 print "writing model %d"%model_num
-                write_models.write("%d:%s\n"%(model_num,str(sums)))
+                write_models.write(" %d:%s\n"%(model_num,str(sums)))
+                write_models.flush()
                 
             group = []
-            write_models.flush()
+            
 
     for j,m in enumerate(models):
         model_num = j + len(c)-len(models)
@@ -56,6 +60,8 @@ def main(indexLocation,clusterLocation,modelsLocation):
         write_models.flush()
 
 def computeModel(c,docVecs,indexLocation):
+        
+
         aggregateVector = []
         global process_pool
         k,docs = c.split(":")
@@ -98,13 +104,23 @@ def computeModel(c,docVecs,indexLocation):
             if vec == [[]]:
                 continue
 
-        #vec_groups = [[] for i in range(PROCESSES)]
-        #for i,v in enumerate(aggregateVector):
-        #    vec_groups[i%PROCESSES].append(v)
+        docs = []
+        print "collecting garbage"
+        gc.collect()
+        print "garbage collected"
+        vec_groups = [[] for i in range(PROCESSES)]
+        for i,v in enumerate(aggregateVector):
+            vec_groups[i%PROCESSES].append(v)
 
-        #sums = process_pool.map(sum_groups, vec_groups)
-
-        sums = sum_groups(aggregateVector)
+        current_process().daemon=False
+        # more processes!
+        process_pool = Pool(INNER_PROCESSES)
+        aggregateVector = []
+        sums = process_pool.map(sum_groups, vec_groups )
+        vec_groups = []
+        gc.collect()
+        sums = sum_groups(sums)
+        print "Completed sums calculations"
         return sums
 
 
@@ -143,7 +159,10 @@ def addVecs(vec1,vec2):
 
 def sum_groups(vec_group):
     v1 = []
-    for v2 in vec_group:
+    num_groups = len(vec_group)
+    for i,v2 in enumerate(vec_group):
+        if i%1000 == 0:
+            print "%d of %d"%(i,num_groups)
         #print len(v2)
         if v2 == [[]]:
             continue
