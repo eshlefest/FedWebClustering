@@ -31,10 +31,15 @@ def main(indexLocation,modelsLocation):
         models.write("%s:%s\n"%(docNum,str(aggregateVector)))
         models.flush()
 
+def test():
+    vec1 = [[1,1],[2,2],[5,5],[10,10]]
+    vec2 = [[2,2],[3,3],[5,5],[11,11]]
+    print(addVecs(vec1,vec2))
+
 
 def addVecs(vec1,vec2):
     """ adds vec1 to vec2 """
-
+    new_vec = []
     vec1_i=0
     vec2_j=0
     while(vec1_i<len(vec1) and vec2_j<len(vec2)):
@@ -42,27 +47,34 @@ def addVecs(vec1,vec2):
         if(vec1[vec1_i][0]==vec2[vec2_j][0]):
             #print vec1[vec1_i]
             #print vec2[vec2_j]
-            vec2[vec2_j][1] += vec1[vec1_i][1] 
+            new_sum = vec1[vec1_i][1] + vec2[vec2_j][1] 
+            new_vec.append([vec2[vec2_j][0],new_sum])
             vec1_i+=1
             vec2_j+=1
-        elif vec1[vec1_i][0]>vec1[vec2_j][0]:
+        elif vec1[vec1_i][0]>vec2[vec2_j][0]:
+            new_vec.append(vec2[vec2_j])
             vec2_j+=1
         else:
-            vec2.insert(vec2_j,vec1[vec1_i])
+            new_vec.append(vec1[vec1_i])
             vec1_i+=1
-            vec2_j+=1
+
     
     # append remaining if stepped out of mean_vec bounds
     while(vec1_i<len(vec1)):
-        vec2.append(vec1[vec1_i])
+        new_vec.append(vec1[vec1_i])
         vec1_i += 1
 
-    return vec2
+    while(vec2_j<len(vec2)):
+        new_vec.append(vec2[vec2_j])
+        vec2_j += 1
+
+    return new_vec
 
 
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description='perform k-means clustering')
     parser.add_argument('indexLocation',type=str)
     parser.add_argument('modelsLocation',type=str)

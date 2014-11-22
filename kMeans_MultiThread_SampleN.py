@@ -9,7 +9,7 @@ from functools import partial
 CONVERGENCE_THRESHOLD = .05
 CENTROID_TRIM_TOP_N = 2500
 ITERATION_LIMIT = 10
-SAMPLE_DIVISOR = 10
+SAMPLE_DIVISOR = 5
 
 
 def main(indexLocation,k,outfile):
@@ -138,7 +138,7 @@ def main(indexLocation,k,outfile):
 
     out.write("ElapsedTime: %f"%(time.time() - start_time))
 
-    write_clusters(centroids,clusters_out,vecFile,indexLocation)
+    write_clusters(centroids,clusters_out,vecFile,indexLocation,process_pool)
     out.close()
 
 
@@ -152,7 +152,9 @@ def sum_groups(vec_group):
 
     return v1
 
-def write_clusters(centroids,clusters_out,vecFile,indexLocation):
+def write_clusters(centroids,clusters_out,vecFile,indexLocation,process_pool):
+
+
     clusters = [[] for a in range(len(centroids))]
     print "writing clusters"
 
@@ -166,11 +168,18 @@ def write_clusters(centroids,clusters_out,vecFile,indexLocation):
             doc_nums.append(doc_num)
 
         #print len(vecs)
+        partial_findNearestCentroid = partial(findNearestCentroid,centroids=centroids)
+
+        #print centroids
+        print "finding nearest centroids"
+        nearest_centroids = process_pool.map(partial_findNearestCentroid,vecs)
+        print "found"
+
         for j,vec in enumerate(vecs):
             
             if vec == [[]]:
                 continue
-            nearest = findNearestCentroid(vec,centroids)
+            nearest = nearest_centroids[j]
             clusters[nearest].append(doc_nums[j])
             if j %500 == 0:
                 print j
@@ -185,35 +194,37 @@ def write_clusters(centroids,clusters_out,vecFile,indexLocation):
 
 
 def addVecs(vec1,vec2):
-
+    """ adds vec1 to vec2 """
+    new_vec = []
     vec1_i=0
     vec2_j=0
-    if vec2 == [[]]:
-        return vec1
-    elif vec1 == [[]]:
-        return vec2
-    #print len(vec1),len(vec2)
     while(vec1_i<len(vec1) and vec2_j<len(vec2)):
         #print vec[vec_i][0],mean_vec[mean_vec_j][0]
         if(vec1[vec1_i][0]==vec2[vec2_j][0]):
-            vec2[vec2_j][1] += vec1[vec1_i][1] 
+            #print vec1[vec1_i]
+            #print vec2[vec2_j]
+            new_sum = vec1[vec1_i][1] + vec2[vec2_j][1] 
+            new_vec.append([vec2[vec2_j][0],new_sum])
             vec1_i+=1
             vec2_j+=1
-        elif vec1[vec1_i][0]>vec1[vec2_j][0]:
+        elif vec1[vec1_i][0]>vec2[vec2_j][0]:
+            new_vec.append(vec2[vec2_j])
             vec2_j+=1
         else:
-            #print "append"
-            vec2.insert(vec2_j,vec1[vec1_i])
+            new_vec.append(vec1[vec1_i])
             vec1_i+=1
-            vec2_j+=1
+
     
     # append remaining if stepped out of mean_vec bounds
     while(vec1_i<len(vec1)):
-        vec2.append(vec1[vec1_i])
+        new_vec.append(vec1[vec1_i])
         vec1_i += 1
 
-    #print len(vec2)
-    return vec2
+    while(vec2_j<len(vec2)):
+        new_vec.append(vec2[vec2_j])
+        vec2_j += 1
+
+    return new_vec
 
 def findNearestCentroid(vec,centroids):
     """ computes similarity between vec and all centroids

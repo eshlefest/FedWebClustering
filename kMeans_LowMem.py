@@ -134,28 +134,37 @@ def write_clusters(centroids,clusters_out,vecFile,indexLocation):
 
 
 def addVecs(vec1,vec2):
-
+    """ adds vec1 to vec2 """
+    new_vec = []
     vec1_i=0
     vec2_j=0
     while(vec1_i<len(vec1) and vec2_j<len(vec2)):
         #print vec[vec_i][0],mean_vec[mean_vec_j][0]
         if(vec1[vec1_i][0]==vec2[vec2_j][0]):
-            vec2[vec2_j][1] += vec1[vec1_i][1] 
+            #print vec1[vec1_i]
+            #print vec2[vec2_j]
+            new_sum = vec1[vec1_i][1] + vec2[vec2_j][1] 
+            new_vec.append([vec2[vec2_j][0],new_sum])
             vec1_i+=1
             vec2_j+=1
-        elif vec1[vec1_i][0]>vec1[vec2_j][0]:
+        elif vec1[vec1_i][0]>vec2[vec2_j][0]:
+            new_vec.append(vec2[vec2_j])
             vec2_j+=1
         else:
-            #print "append"
-            vec2.append(vec1[vec1_i])
+            new_vec.append(vec1[vec1_i])
             vec1_i+=1
+
     
     # append remaining if stepped out of mean_vec bounds
     while(vec1_i<len(vec1)):
-        vec2.append(vec1[vec1_i])
+        new_vec.append(vec1[vec1_i])
         vec1_i += 1
 
-    return vec2
+    while(vec2_j<len(vec2)):
+        new_vec.append(vec2[vec2_j])
+        vec2_j += 1
+
+    return new_vec
 
 def findNearestCentroid(vec,centroids):
     """ computes similarity between vec and all centroids
