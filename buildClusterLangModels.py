@@ -1,9 +1,11 @@
 import argparse
 import os
 from multiprocessing import Pool
+from functools import partial
 
 SMOOTHING_ALPHA = .99
-PROCESSES = 8
+PROCESSES = 4
+process_pool = Pool(PROCESSES)
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
 # a resource and CTF is the collection frequency
@@ -14,12 +16,21 @@ PROCESSES = 8
 
 def main(indexLocation,clusterLocation,modelsLocation):
     clusters = open(clusterLocation,"r")
-    models = open(modelsLocation,"w")
-    docVecs = [f for f in os.listdir(indexLocation) if f.endswith(".vec#")]
-    process_pool = Pool(PROCESSES)
+    write_models = open(modelsLocation,"w")
+    docVecs = sorted([f for f in os.listdir(indexLocation) if f.endswith(".vec#")])
+    
+    partial_computeModels = partial(computeModel, docVecs=docVecs, indexLocation=indexLocation)
 
+    print "computing models"
+    c = clusters.readlines()
+    models =  process_pool.map(partial_computeModels,c)
 
-    for i,c in enumerate(clusters.readlines()):
+    for i,m in enumerate(models):
+        print "writing model %d"%i
+        write_models.write("%d:%s\n"%(i,str(sums)))
+        write_models.flush()
+
+def computeModel(c,docVecs,indexLocation):
         aggregateVector = []
 
         k,docs = c.split(":")
@@ -30,14 +41,13 @@ def main(indexLocation,clusterLocation,modelsLocation):
         vec_num = docVecs[docVecsIndex][18:21]
         vecFile = open(indexLocation+"/"+docVecs[docVecsIndex],"r")
 
-        print "building model: %d"%i
+        print "building model"
         print "clust size: %d"%len(docs)
         for i,d in enumerate(docs):
             doc_num = d[:3]
 
             while(vec_num != doc_num):
                 docVecsIndex +=1
-                print docVecs[docVecsIndex]
                 vec_num = docVecs[docVecsIndex][18:21]
 
             # make sure current open file corresponds to current docVecsIndex
@@ -64,16 +74,13 @@ def main(indexLocation,clusterLocation,modelsLocation):
                 continue
 
         vec_groups = [[] for i in range(PROCESSES)]
-        for v in aggregateVector:
-            vec_groups[v%PROCESSES].append(v)
+        for i,v in enumerate(aggregateVector):
+            vec_groups[i%PROCESSES].append(v)
 
-        sums = process_pool.map(sum_groups, aggregateVector)
+        sums = process_pool.map(sum_groups, vec_groups)
 
         sums = sum_groups(sums)
-
-        print "writing model %d"%i
-        models.write("%d:%s\n"%(i,str(sums)))
-        models.flush()
+        return sums
 
 
 def addVecs(vec1,vec2):
