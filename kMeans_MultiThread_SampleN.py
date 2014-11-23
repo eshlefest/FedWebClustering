@@ -9,7 +9,7 @@ from functools import partial
 CONVERGENCE_THRESHOLD = .05
 CENTROID_TRIM_TOP_N = 2500
 ITERATION_LIMIT = 10
-SAMPLE_DIVISOR = 5
+SAMPLE_DIVISOR = 2
 
 
 def main(indexLocation,k,outfile):
@@ -19,7 +19,7 @@ def main(indexLocation,k,outfile):
     out = open(outfile+".txt","w")
     clusters_out = open(outfile+".clust","w")
 
-    vecFile = [f for f in os.listdir(indexLocation) if f.endswith(".vec#tfidf")]
+    vecFile = sorted([f for f in os.listdir(indexLocation) if f.endswith(".vec#tfidf")])
     docs = []
     vecs = []
     centroid_update_sim = 0
