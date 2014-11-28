@@ -169,7 +169,7 @@ def loadModels(modelsLocation):
     modelSizes = []
     for i,m in enumerate(mFile):
         resource,model = m.split(":")
-        print resource
+        #print resource
         resources.append(resource)
         model = eval(model)
         models.append(model)

@@ -51,15 +51,6 @@ def main(indexLocation,clusterLocation,modelsLocation):
         write_models.write("%d:%s\n"%(model_num,str(m)))
 
 
-
-
-    models =  process_pool.map(partial_computeModels,c)
-
-    for i,m in enumerate(models):
-        print "writing model %d"%i
-        write_models.write("%d:%s\n"%(i,str(m)))
-        write_models.flush()
-
 def computeModel(c,docVecs,indexLocation):
         
 
