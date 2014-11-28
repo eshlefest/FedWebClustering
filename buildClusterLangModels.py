@@ -5,7 +5,7 @@ from functools import partial
 import gc
 
 SMOOTHING_ALPHA = .99
-PROCESSES = 1 
+PROCESSES = 5 
 INNER_PROCESSES = 4
 global process_pool
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
@@ -57,7 +57,7 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
     for i,m in enumerate(models):
         print "writing model %d"%i
-        write_models.write("%d:%s\n"%(i,str(sums)))
+        write_models.write("%d:%s\n"%(i,str(m)))
         write_models.flush()
 
 def computeModel(c,docVecs,indexLocation):
@@ -85,6 +85,7 @@ def computeModel(c,docVecs,indexLocation):
 
             # make sure current open file corresponds to current docVecsIndex
             if(currentOpenVecFile != docVecsIndex):
+                vecFile.close()
                 vecFile = open(indexLocation+"/"+docVecs[docVecsIndex],"r")
 
             # find the line in the file with the right vector
@@ -93,30 +94,40 @@ def computeModel(c,docVecs,indexLocation):
                 l = vecFile.readline()
                 try:
                     dVecNum,vec = l.split(":")
+
                 except Exception as e:
                     print e
                     print l
                     print doc_num
                     continue
 
-            aggregateVector.append(eval(vec))
+            try:
+                aggregateVector.append(eval(vec))
+            except Exception as e:
+                    print e
+                    print vec
+                    print doc_num
+                    print dVecNum
+                    continue
+
             if i%500 ==0:
                 print i
 
             if i %2000 == 0 and i != 0:
                 print "Summing subset"
-                vec_groups = [[] for i in range(INNER_PROCESSES)]
-                for i,v in enumerate(aggregateVector):
-                    vec_groups[i%INNER_PROCESSES].append(v)
+                #vec_groups = [[] for i in range(INNER_PROCESSES)]
+                #for i,v in enumerate(aggregateVector):
+                #    vec_groups[i%INNER_PROCESSES].append(v)
 
-                current_process().daemon=False
+               #current_process().daemon=False
                 # more processes!
-                process_pool = Pool(INNER_PROCESSES)
+                #process_pool = Pool(INNER_PROCESSES)
+                #aggregateVector = []
+                sums = sum_groups(aggregateVector)
                 aggregateVector = []
-                sums = process_pool.map(sum_groups, vec_groups )
                 vec_groups = []
                 
-                sums = sum_groups(sums)
+                
                 print "merging sums"
                 final_model = addVecs(sums,final_model)
                 sums = []
@@ -131,16 +142,17 @@ def computeModel(c,docVecs,indexLocation):
         print "collecting garbage"
         gc.collect()
         print "garbage collected"
-        vec_groups = [[] for i in range(INNER_PROCESSES)]
-        for i,v in enumerate(aggregateVector):
-            vec_groups[i%INNER_PROCESSES].append(v)
+        #vec_groups = [[] for i in range(INNER_PROCESSES)]
+        #for i,v in enumerate(aggregateVector):
+            #vec_groups[i%INNER_PROCESSES].append(v)
 
-        current_process().daemon=False
+        #current_process().daemon=False
             # more processes!
-        process_pool = Pool(INNER_PROCESSES)
-        aggregateVector = []
-        sums = process_pool.map(sum_groups, vec_groups )
+        #process_pool = Pool(INNER_PROCESSES)
+        #aggregateVector = []
+        sums = sum_groups(aggregateVector)
         vec_groups = []
+        aggregateVector = []
         gc.collect()
         final_model = addVecs(sums,final_model)
 
