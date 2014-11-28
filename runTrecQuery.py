@@ -5,15 +5,6 @@ from nltk.stem.porter import *
 import string
 import math
 
-#SMOOTHING_ALPHA = .99
-# to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
-# with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
-# a resource and CTF is the collection frequency
-
-# on second thought, this will end up requiring us to keep a value for every feature in the term space
-# and ruin the sparse vector representation optimization.  With this in mind, we will instead assume
-# all OOV terms have a frequency of 1, and add 1 to all term frequencies, implementing laplace smoothing.
-
 def main(modelsLocation,dictionaryLocation,queriesFile,resultslocation,baseline=False):
     if baseline:
         print "baseline"
@@ -186,8 +177,15 @@ def loadModels(modelsLocation):
 
     return resources,models,modelSizes
 
+def test():
+    clusters = "../results/k20N2500I10S10.model"
+    print getClusterDistributions(clusters)
+
 
 if __name__ == '__main__':
+    #test()
+    #exit()
+
     parser = argparse.ArgumentParser(description='perform query on language models')
     parser.add_argument('models',type=str)
     parser.add_argument('dictionary',type=str)
