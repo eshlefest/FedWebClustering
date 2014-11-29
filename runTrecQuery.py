@@ -54,17 +54,11 @@ def main(modelsLocation,dictionaryLocation,queriesFile,resultslocation,baseline=
                 cluster_dist = cluster_res_distributions[resources[r]]
                 for res in cluster_dist:
                     if not res in resource_rankings:
+			print "%s Q0 FW14-e%s %d %d ryan"%(num,res,99,99)
                         resource_rankings.append(res)
 
-            for i,r in enumerate(rankings):
+            for i,r in enumerate(resource_rankings):
                 out.write("%s Q0 FW14-e%s %d %d ryan\n"%(num,r,i,149-i))
-
-
-
-
-
-
-        
 
 
         
@@ -169,7 +163,7 @@ def loadModels(modelsLocation):
     modelSizes = []
     for i,m in enumerate(mFile):
         resource,model = m.split(":")
-        #print resource
+        resource = resource.replace(" ","")
         resources.append(resource)
         model = eval(model)
         models.append(model)
