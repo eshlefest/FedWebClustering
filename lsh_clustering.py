@@ -63,7 +63,7 @@ def main(indexLocation,bits_per_signature,outfile):
         
         for i,f in enumerate(fingerprints):
             clusters[f].append(nums[i])
-lsh
+
     out.write("ElapsedTime: %f"%(time.time() - start_time))
 
     write_clusters(clusters,clusters_out)
