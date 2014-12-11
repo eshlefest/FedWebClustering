@@ -89,6 +89,8 @@ def write_clusters(clusters,clusters_out):
     clusters_out.close()
 
 def sparse_dot_product(sparse_vec,hyperplane):
+    if sparse_vec == [[]]:
+        return 0
     dot = 0
     for i,v in sparse_vec:
         dot += v * hyperplane[i]

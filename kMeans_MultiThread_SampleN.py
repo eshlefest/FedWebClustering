@@ -9,7 +9,7 @@ from functools import partial
 CONVERGENCE_THRESHOLD = .05
 CENTROID_TRIM_TOP_N = 2500
 ITERATION_LIMIT = 10
-SAMPLE_DIVISOR = 2
+SAMPLE_DIVISOR = 5
 
 
 def main(indexLocation,k,outfile):
