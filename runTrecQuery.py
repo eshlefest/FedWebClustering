@@ -28,14 +28,14 @@ def main(modelsLocation,dictionaryLocation,queriesFile,resultslocation,baseline=
 
     for q in queries.readlines():
         num,query = q.split("\t")
+
+        # stem and pre-process query list
         q_as_t_id = [stemmer.stem(regex.sub('',word.lower())).replace("\n","") for word in query.split(" ")]
 
-        #if term not in dictionary, drop it
+        # transofrm query into t_id list
+        # if term not in dictionary, drop it
         q_as_t_id = [dictionary[w][0] for w in q_as_t_id if dictionary.has_key(w)]
-        
-        #q_as_t_id = [1927769,32957,1234,5431,6756745,]
-        #print query
-        #print q_as_t_id
+
         print "getting rankings"
         model_rankings = getRankings(q_as_t_id,models,modelSizes)
         #print rankings
@@ -65,6 +65,8 @@ def main(modelsLocation,dictionaryLocation,queriesFile,resultslocation,baseline=
         
 
 def getClusterDistributions(modelsLocation):
+    """ compute the resource distribution within each cluster """
+
     clusters = open(modelsLocation.replace(".model",".clust"),"r")
     cluster_resource_distributions = {}
     
@@ -115,7 +117,6 @@ def load_dict(dictionary_location):
 
 def getRankings(q_as_t_id,models,sizes):
     sums = []
-
     for i,m in enumerate(models):
         if sizes[i]==0:
             print "empty model, uhoh: %d"%i
@@ -132,10 +133,6 @@ def getRankings(q_as_t_id,models,sizes):
 def getSumLogLikelihood(q_as_t_id,m,size):
 
     tfs = [tf for [t_id,tf] in m if t_id in q_as_t_id]
-
-    for [t_id,tf] in m:
-        if t_id in q_as_t_id:
-            print t_id,tf
 
     #print tfs
 
@@ -157,6 +154,7 @@ def getSumLogLikelihood(q_as_t_id,m,size):
 
 
 def loadModels(modelsLocation):
+    """ load language models into memory """
     mFile = open(modelsLocation,"r")
     resources = []
     models = []
@@ -171,14 +169,10 @@ def loadModels(modelsLocation):
 
     return resources,models,modelSizes
 
-def test():
-    clusters = "../results/k20N2500I10S10.model"
-    print getClusterDistributions(clusters)
 
 
 if __name__ == '__main__':
-    #test()
-    #exit()
+
 
     parser = argparse.ArgumentParser(description='perform query on language models')
     parser.add_argument('models',type=str)

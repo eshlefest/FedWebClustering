@@ -1,8 +1,4 @@
-# Ryan Eshleman  queryEngine.py  11-9-14
-# 
-# Takes a directory full of trecFedWeb tarballed data and transforms 
-# each doc into a sparse vactor representation termId:tf
-#
+
 
 import argparse
 import os
@@ -17,6 +13,7 @@ from awesomeparser import AwesomeParser
 
 
 def main(dataLocation,indexLocation,sampleSize):
+    """ preprocess script that transforms documents into doc vectors of [[t_id,tf],[t_id,tf]...] """
 
     ledger = open(indexLocation +"/ledger.txt",'r+a')
     alreadyProcessed = [l.strip() for l in ledger.readlines()]
@@ -25,8 +22,7 @@ def main(dataLocation,indexLocation,sampleSize):
     tars = [t for t in os.listdir(dataLocation) if t not in alreadyProcessed and t.find("doc") != -1]
 
     for tar in tars:
-        #if tar.find("doc") == -1:
-        #    continue
+        
         parser = AwesomeParser()
         print tar, sampleSize
         count=1
@@ -41,17 +37,7 @@ def main(dataLocation,indexLocation,sampleSize):
                     skipped +=1
                     continue
                 i = i - skipped
-                #print i
-                #if i % 5000 == 0:
-                #    write_dictionary(parser,indexLocation,tar.replace("/","#").replace(".tgz","#%d.dict"%count))
-                #    count += 1
-                #    out.flush()
-                #    out.close()
-                #    out = open(indexLocation +"/"+tar.replace(".tgz","#%d.vec"%count),'w')
-                #    parser.dictionary = {}
-                #    parser = AwesomeParser()
-                #    print "partition %d"%count
-                 
+
                   
                 if (float(i) / num_files) * 100 > sampleSize:
                     break
@@ -90,17 +76,17 @@ def main(dataLocation,indexLocation,sampleSize):
     #print len(parser.dictionary)
 
 def getTextFromHTMLFile(file_obj):
-    t = file_obj.read()#.decode('ascii', 'ignore')
-    #print t
+    """ strip markup and other code from html file and return only the text """
+    t = file_obj.read()
+
     cleanedText = lxml.html.clean.clean_html(t)
-    #cleanedText
-    #print cleanedText
-    #html.decode('utf-8', 'ignore')
+
     soup = BeautifulSoup(cleanedText.decode('ascii','ignore'))
     text = soup.get_text()
     return text
 
 def processTIDList(TIDList):
+    """ sort TIDList """
     return [[w,TIDList.count(w)] for w in sorted(set(TIDList))]
 
     

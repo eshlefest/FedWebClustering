@@ -9,16 +9,19 @@ from functools import partial
 CONVERGENCE_THRESHOLD = .05
 CENTROID_TRIM_TOP_N = 2500
 ITERATION_LIMIT = 10
-SAMPLE_DIVISOR = 5
+SAMPLE_DIVISOR = 2
 
 
 def main(indexLocation,k,outfile):
-    global centroids 
+    """ Performs K-Means clustering, with a maximum number of iterations set by ITERATION_LIMIT, centroid trimming 
+        determined by CENTROID_TRIM_TOP_N and sample rate determined by SAMPLE_DIVISOR.  As SAMPLE_DIVISOR value of 2
+        indicates a sample rate of %50 """
     start_time = time.time()
 
     out = open(outfile+".txt","w")
     clusters_out = open(outfile+".clust","w")
 
+    # get vecfile names from location
     vecFile = sorted([f for f in os.listdir(indexLocation) if f.endswith(".vec#tfidf")])
     docs = []
     vecs = []
@@ -27,10 +30,12 @@ def main(indexLocation,k,outfile):
     process_pool = Pool(8)
     #centroid_assignments =
     #global centroids
+
+    # randomly assign centroids
     centroids = initializeCentroids(indexLocation,vecFile,k)
     
-    #print centroids
-
+    
+    # write some logging info to file
     out.write("k=%d Convergence: %f TopN: %d\n"%(k,CONVERGENCE_THRESHOLD,CENTROID_TRIM_TOP_N))
     outstr = "iteration"
     for i in range(k):
@@ -45,15 +50,21 @@ def main(indexLocation,k,outfile):
     sample_indexes = getSampleIndexes(indexLocation,vecFile,SAMPLE_DIVISOR)
 
     print "here we go"
+
+    # main k-means loop
+    # centroid_update_sim is compute at the end of each loop, and compared here
+    # the loop ends when new and old centroids are sufficiently similar
     while(1 - centroid_update_sim > CONVERGENCE_THRESHOLD):
         new_centroids = [[] for b in range(k)]
         new_centroids_count = [0 for a in range(k)]
+        
+        # for resource in indexLocation
         for i,f in enumerate(vecFile):
 
-            
             print "loading vec: %s"%f
             vecs = []
             openVecFile = open(indexLocation+f,'r')
+            
             # retreive sample
             lines = [line for vecnum,line in enumerate(openVecFile.readlines()) if vecnum in sample_indexes[i]]
             openVecFile.close()
@@ -66,40 +77,37 @@ def main(indexLocation,k,outfile):
 
             lines = ""
 
-            print len(vecs)
+            #print len(vecs)
             #print vecs
+
+            # needed for multiple parameter passing and multiprocessing
             partial_findNearestCentroid = partial(findNearestCentroid,centroids=centroids)
 
-            #print centroids
+            
+            # send centroid assignment computations out to process pool
             print "finding nearest centroids"
             nearest_centroids = process_pool.map(partial_findNearestCentroid,vecs)
 
             print "found nearest centroids!"
             #print nearest_centroids
 
-            #
-            #for j,vec in enumerate(vecs):
-            #    
-            #    if vec ==[[]]:
-            #        continue
-            #    nearest = findNearestCentroid(vec,centroids)
-            #    if j %500 == 0:
-            #        print j
-
             # group vectors by centroid assignment
             vec_groups = []
             for i in range(len(centroids)):
                 vec_groups.append([v for j,v in enumerate(vecs) if nearest_centroids[j] == i])
-                #vec_groups[i]= [group[n] for n in random.sample(len(group),sample_amount)]]
+                
 
+            # sum all vectors assigned to each centroid, multiprocessed
             print "summing groups"
             sums = process_pool.map(sum_groups, vec_groups)
             print "groups summed!"
             #print sums
+
+            # addvecs probably not necessary hear, leftover from previous iterations
             for i,s in enumerate(sums):
                 new_centroids[i] = addVecs(s,new_centroids[i])
 
-                #new_centroids[nearest] = addVecs(vec,new_centroids[nearest])
+                
 
             for i in range(len(new_centroids_count)):
                 new_centroids_count[i] += nearest_centroids.count(i)
@@ -107,8 +115,12 @@ def main(indexLocation,k,outfile):
             trim_centroids(new_centroids)
             out.flush()
             
-            
 
+
+        # at this point, we have assigned all vectors to centroids, and have summed all vectors corresponding
+        # to the centroids.  in the next step we will compute the new centroid values and normalize them.
+        # we will also compute the similarity between the new centroids and the old ones.
+            
         outstring = "%d"%iteration
         #find mean
         centroid_update_sim= 0
@@ -143,6 +155,7 @@ def main(indexLocation,k,outfile):
 
 
 def sum_groups(vec_group):
+    "takes an array of vectors, and sums them "
     v1 = []
     for v2 in vec_group:
         #print len(v2)
@@ -153,7 +166,7 @@ def sum_groups(vec_group):
     return v1
 
 def write_clusters(centroids,clusters_out,vecFile,indexLocation,process_pool):
-
+    """ given an array of centroids, write the clusters to file   """
 
     clusters = [[] for a in range(len(centroids))]
     print "writing clusters"
@@ -250,6 +263,7 @@ def findNearestCentroid(vec,centroids):
 
 
 def initializeCentroids(indexLocation,vecFile,k):
+    """ choose K random documents from indexLocation, initialize them as centroids """
     centroids = []
 
     for i in range(k):    
@@ -268,6 +282,7 @@ def initializeCentroids(indexLocation,vecFile,k):
 
 
 def trim_centroids(centroids):
+    """ leave the top N values, lose the rest """
     for i,c in enumerate(centroids):
         if c == [[]]:
             continue

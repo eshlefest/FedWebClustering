@@ -1,7 +1,7 @@
 import argparse
 import os
 
-SMOOTHING_ALPHA = .99
+#SMOOTHING_ALPHA = .99
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
 # a resource and CTF is the collection frequency
@@ -11,6 +11,7 @@ SMOOTHING_ALPHA = .99
 # all OOV terms have a frequency of 1, and add 1 to all term frequencies, implementing laplace smoothing.
 
 def main(indexLocation,modelsLocation):
+    """takes finds all resources at 'indexLocation' and generate a language model for each, unnormalized """
     models = open(modelsLocation,"w")
     docVecs = [indexLocation+f for f in os.listdir(indexLocation) if f.endswith(".vec#")]
 
@@ -19,12 +20,14 @@ def main(indexLocation,modelsLocation):
         aggregateVector = []
         docNum = d[46:49]
         print "computing model %s"%docNum
+
+        # sum up all doc vecs, simple as that
         for l in open(d).readlines():
             k,v = l.split(":")
             vec = eval(v)
             aggregateVector = addVecs(vec,aggregateVector)
 
-        #laplace smoothing
+        #half of laplace smoothing, for oov terms, +1 is added at query time
         aggregateVector = [[t_id,tf+1] for [t_id,tf] in aggregateVector]
 
         print "writing model %s"%docNum

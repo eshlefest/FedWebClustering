@@ -1,8 +1,4 @@
-# Ryan Eshleman  queryEngine.py  11-9-14
-# 
-# Takes a directory full of trecFedWeb tarballed data and transforms 
-# each doc into a sparse vactor representation termId:tf
-#
+
 
 import argparse
 import os
@@ -17,13 +13,9 @@ from awesomeparser import AwesomeParser
 
 
 def main(indexLocation):
+    """ merges dictionaries, then updates vectors with new t_id values """
     dictDirectory = indexLocation +"/dictionaries"
     masterDict = {}
-
-    #dirs = os.listdir(dictDirectory)
-    #for d in dirs:
-    #    if d.endswith(".dict"):
-    #        print d
 
     if "master.dict" not in os.listdir(dictDirectory):
         merge_dictionaries(dictDirectory,masterDict)
@@ -39,7 +31,7 @@ def main(indexLocation):
 
 
 def merge_dictionaries(dictDirectory,masterDict):
-    #dicts = [load_dict(dictDirectory +"/"+t) for t in os.listdir(dictDirectory) if t.endswith(".dict")]
+    """ ensure t_ids for the same word match """
 
     for dictionary in os.listdir(dictDirectory):
         if dictionary.endswith(".dict"):
@@ -47,12 +39,9 @@ def merge_dictionaries(dictDirectory,masterDict):
             print "merging: "+dictionary
             merge(masterDict,d)
 
-        #di
-    #for i,d in enumerate(dicts):
-    #    print i
-    #    merge(masterDict,d)
 
 def update_doc_vecs(masterDict, indexLocation):
+    """ go through all the document vectors and update t_ids with new, universal t_ids """
     doc_vecs_groups = [f for f in os.listdir(indexLocation) if f.endswith(".vec")]
     #print doc_vecs
     t_id_mapper = {}
@@ -64,12 +53,10 @@ def update_doc_vecs(masterDict, indexLocation):
         v = open(indexLocation+"/"+group,'r')
         out = open(indexLocation+"/global_vecs/"+group+"#",'w')
         d = get_dictionary(group,indexLocation)
-        #print group_id, d["comput"]
 
-        # build global t_id mapping
 
         for key,[t_id,df] in d.iteritems():
-            #print key,t_id,df
+      
 
             if not masterDict.has_key(key):
                 print "uh oh"
@@ -77,15 +64,11 @@ def update_doc_vecs(masterDict, indexLocation):
             global_tid = masterDict[key][0]
 
             t_id_mapping[t_id] = global_tid
-            # holds mappings from old_tid => new t_id
-
-
-        #print t_id_mapping[1]    
+  
         for line in v.readlines():
             doc_id,vec = line.split(":")
             doc_id = "%s_%s"%(group_id,doc_id)
-            #vec = eval(vec)
-            #print t_id_mapping[1]
+
             try:
                 vecLine = [[t_id_mapping[tid],tf] for [tid,tf] in eval(vec)]
             except Exception as e:
@@ -103,6 +86,7 @@ def update_doc_vecs(masterDict, indexLocation):
 
 
 def get_dictionary(vec,indexLocation):
+    """ finds the correct dictionary, then calls 'load_dict' to load it into memory """
     dictDirectory = indexLocation +"/dictionaries"
     candidates = [d for d in os.listdir(dictDirectory) if d.find(".dict") != -1]
     #print 
@@ -116,6 +100,7 @@ def get_dictionary(vec,indexLocation):
 
 
 def merge(masterDict,newDict):
+    """ merge two dictionaries """
     for key,[t_id,df] in newDict.iteritems():
         if not key in masterDict:
             masterDict[key] = [len(masterDict),df]

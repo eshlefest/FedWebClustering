@@ -17,59 +17,74 @@ DICT_SIZE = 7538504
 
 
 def main(indexLocation,bits_per_signature,outfile):
+    """  this function performs LSH on the vectors at 'indexLocation'
+         it then writes the resulting clusters to the file specified at 'outfile.clust'
+         and some logging info at 'outfile.txt'
+         algorithm heavily informed by https://gist.github.com/greeness/94a3d425009be0f94751
+    """
+
     start_time = time.time()
 
     rand_planes = numpy.random.randn(bits_per_signature,DICT_SIZE)
-    print len(rand_planes)
+    #print len(rand_planes)
+    
+    #needed to pass multiple arguments to threads
     partial_compute_fingerprint = partial(compute_fingerprint,hyperplanes=rand_planes)
 
     out = open(outfile+".txt","w")
     clusters_out = open(outfile+".clust","w")
 
+    # grab the names of all files in 'indexLocation' that end in '.vec#tfidf'
     vecFile = sorted([f for f in os.listdir(indexLocation) if f.endswith(".vec#tfidf")])
     docs = []
     vecs = []
-    centroid_update_sim = 0
 
+    #spin up processes in process pool
     process_pool = Pool(PROCESSES)
 
     print "here we go"
 
     clusters = [[] for i in range(2**bits_per_signature)]
     
+    # for every file in vecFile
     for i,f in enumerate(vecFile):
             
         print "loading vec: %s"%f
         vecs = []
         nums = []
         openVecFile = open(indexLocation+f,'r')
-        # retreive sample
         lines = openVecFile.readlines()
         openVecFile.close()
 
+        # for vector in file
+        # get the docNum and evaluate the vector string representation
+        # into a python array
         for line in lines:
             num,v = line.split(":")
-            #print num
-            #print v
             nums.append(num)
             vecs.append(eval(v))
 
+        # clear lines for garbage collection
         lines = ""
 
-        print len(vecs)
-        #print vecs
-
+        # send jobs to process pool for compute an array of hash fingerprints
         fingerprints = process_pool.map(partial_compute_fingerprint,vecs)
         
+        # each fingerprint is a bit vector, but is evaluated to an integer in python
+        # so we can use this value as the index into the array "clusters" and
+        # add each document to the cluster array based on its finerprint
         for i,f in enumerate(fingerprints):
             clusters[f].append(nums[i])
 
+    #  how long did this take?
     out.write("ElapsedTime: %f"%(time.time() - start_time))
 
     write_clusters(clusters,clusters_out)
     out.close()
 
+
 def compute_fingerprint(vector,hyperplanes):
+    """use bit shifting to generate a bit vector via LSH """
     res = 0
     for p in (hyperplanes):
         res = res << 1
@@ -80,6 +95,7 @@ def compute_fingerprint(vector,hyperplanes):
 
 
 def write_clusters(clusters,clusters_out):
+    """write clusters to file """
     print "writing clusters"
 
     for i,c in enumerate(clusters):
@@ -89,6 +105,7 @@ def write_clusters(clusters,clusters_out):
     clusters_out.close()
 
 def sparse_dot_product(sparse_vec,hyperplane):
+    """compute the dot product of vectors when arg1 is sparse and arg2 is not """
     if sparse_vec == [[]]:
         return 0
     dot = 0
@@ -98,6 +115,8 @@ def sparse_dot_product(sparse_vec,hyperplane):
     return dot
 
 def test_dot_product_function():
+    """ Sanity check that 'sparse_dot_product works'
+        by checking its output against numpy """
     vec_sparse = [[1,2],[2,3],[5,5],[6,5],[7,10]]
     vec_full = [0,2,3,0,0,5,5,10]
     rand = numpy.random.randn(8)
@@ -106,11 +125,6 @@ def test_dot_product_function():
     b = numpy.dot(rand,vec_full)
 
     print a,b
-
-
-
-
-
 
 
 if __name__ == '__main__':

@@ -4,10 +4,9 @@ from multiprocessing import Pool,current_process
 from functools import partial
 import gc
 
-SMOOTHING_ALPHA = .99
+#SMOOTHING_ALPHA = .99
 PROCESSES = 5 
 INNER_PROCESSES = 4
-global process_pool
 # to avoid OOV problems and zero probabilities, we will smooth the language models of each collection/cluster
 # with a mixing variable alpha  weight of a term will be ALPHA(RTF)+(1-ALPHA)(CTF) where RTF is either a cluster or
 # a resource and CTF is the collection frequency
@@ -17,7 +16,7 @@ global process_pool
 # all OOV terms have a frequency of 1, and add 1 to all term frequencies, implementing laplace smoothing.
 
 def main(indexLocation,clusterLocation,modelsLocation):
-    global process_pool
+    """ Multithreaded language model computation """
     process_pool = Pool(PROCESSES)
     clusters = open(clusterLocation,"r")
     write_models = open(modelsLocation,"w")
@@ -30,6 +29,9 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
     group = []
     models = []
+
+    # assign one cluster computation per process, cuts down on memory consumption
+    # write models to file before computing next batch
     for i,line in enumerate(c):
         group.append(line)
         if i%PROCESSES == PROCESSES - 1:
@@ -45,6 +47,7 @@ def main(indexLocation,clusterLocation,modelsLocation):
             group = []
             
 
+    # write remaining models
     for j,m in enumerate(models):
         model_num = j + len(c)-len(models)
         print "writing model %d"%model_num
@@ -52,6 +55,7 @@ def main(indexLocation,clusterLocation,modelsLocation):
 
 
 def computeModel(c,docVecs,indexLocation):
+    """given a cluster of documents, and the location of the corresponding documetn vectors, compute the language model """
         
 
         aggregateVector = []
@@ -101,25 +105,20 @@ def computeModel(c,docVecs,indexLocation):
                     print dVecNum
                     continue
 
+            # confirm that we're making progress
             if i%500 ==0:
                 print i
 
+            # sum subsets at intervals of 2000
             if i %2000 == 0 and i != 0:
                 print "Summing subset"
-                #vec_groups = [[] for i in range(INNER_PROCESSES)]
-                #for i,v in enumerate(aggregateVector):
-                #    vec_groups[i%INNER_PROCESSES].append(v)
 
-               #current_process().daemon=False
-                # more processes!
-                #process_pool = Pool(INNER_PROCESSES)
-                #aggregateVector = []
                 sums = sum_groups(aggregateVector)
                 aggregateVector = []
                 vec_groups = []
                 
                 
-                print "merging sums"
+                print "merging sums with final model"
                 final_model = addVecs(sums,final_model)
                 sums = []
                 gc.collect()
@@ -133,14 +132,8 @@ def computeModel(c,docVecs,indexLocation):
         print "collecting garbage"
         gc.collect()
         print "garbage collected"
-        #vec_groups = [[] for i in range(INNER_PROCESSES)]
-        #for i,v in enumerate(aggregateVector):
-            #vec_groups[i%INNER_PROCESSES].append(v)
 
-        #current_process().daemon=False
-            # more processes!
-        #process_pool = Pool(INNER_PROCESSES)
-        #aggregateVector = []
+        # sum remaining vectors
         sums = sum_groups(aggregateVector)
         vec_groups = []
         aggregateVector = []
@@ -185,6 +178,7 @@ def addVecs(vec1,vec2):
     return new_vec
 
 def sum_groups(vec_group):
+    """" takes an array of vectors and returns the sum of the vectors """"
     v1 = []
     num_groups = len(vec_group)
     for i,v2 in enumerate(vec_group):

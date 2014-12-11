@@ -27,9 +27,7 @@ def main(indexLocation,dictLocation):
             vec = eval(vec)
             un_normalized_vec = [[t_id,tf*master_dict[tf]] for [t_id,tf] in vec]
             normalized_vec = normalize(un_normalized_vec)
-            #print vec
-            #print un_normalized_vec
-            #print normalized_vec
+
             out += str(normalized_vec)
         
         write.write(out)
@@ -81,7 +79,7 @@ def load_idf_dict(dictionary_location,numDocs):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='perform k-means clustering')
+    parser = argparse.ArgumentParser(description='Computes tfidf scores')
     parser.add_argument('indexLocation',type=str)
     parser.add_argument('dictLocation',type=str)
     parser.add_argument('-v',action='store_true')

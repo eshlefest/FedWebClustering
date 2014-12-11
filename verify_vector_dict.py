@@ -1,6 +1,8 @@
 import argparse
 
 def main(indexLocation,vector):
+    """ Utility file to make sure the preprocessing script is functioning correctly """
+
     dict_loc = indexLocation+"/dictionaries/"
 
     d = load_dict(dict_loc+vector)
